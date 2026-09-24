@@ -67,7 +67,7 @@ The `workflow` value selects the checks:
 | `patch`  | staging and snapshot on the release branch                                                                                                |
 | `minor`  | staging and snapshot on the release branch, **plus** the snapshot manifest on `main`, which must have moved to the next development minor |
 
-Only `minor` bumps move `main`, which is why it is the only workflow with a third check.
+Only `minor` bumps move `main`, which is why it is the only workflow with a third check. A `minor` workflow also requires `version` to be a `X.Y.0` release — a patch version there means the pipeline's `version` and `workflow` disagree, and the step fails rather than watching a plausible but wrong set of manifests.
 
 `major` is not supported yet. Passing it fails the step rather than falling back to the `patch` checks, since a major bump has different expectations for what the manifests should report.
 
