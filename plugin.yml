@@ -1,0 +1,27 @@
+name: "Version Bump DRA Buildkite Plugin"
+description: Opinionated Buildkite plugin that waits for a repo's Daily Release Artifacts (DRA) to reach the expected version for a given release workflow
+author: https://github.com/ninalee12
+requirements:
+  - jq
+  - curl
+configuration:
+  properties:
+    product:
+      type: string
+      description: DRA product name as it appears in the artifact path (e.g. "beats", "apm-server"). Not always identical to the repo name.
+    version:
+      type: string
+      description: Full MAJOR.MINOR.PATCH version being bumped to (e.g. "9.5.0"). The release branch is always derived from this by dropping the patch component.
+    workflow:
+      type: string
+      enum: [patch, minor]
+      description: The version-bump workflow type, matching the WORKFLOW value passed by the centralized version-bump pipeline.
+    polling_interval:
+      type: number
+      description: The polling interval in seconds for the curl
+      default: 60
+  required:
+    - product
+    - version
+    - workflow
+  additionalProperties: false

@@ -1,0 +1,140 @@
+#!/bin/bash
+set -euo pipefail
+
+echo "~~~ :package: Version Bump DRA"
+
+# Configuration
+PRODUCT="${BUILDKITE_PLUGIN_VERSION_BUMP_DRA_PRODUCT:-}"
+VERSION="${BUILDKITE_PLUGIN_VERSION_BUMP_DRA_VERSION:-}"
+WORKFLOW="${BUILDKITE_PLUGIN_VERSION_BUMP_DRA_WORKFLOW:-}"
+# default to 60s from plugin.yml
+POLLING_INTERVAL="${BUILDKITE_PLUGIN_VERSION_BUMP_DRA_POLLING_INTERVAL:-60}"
+
+# Validate
+if [[ -z "$PRODUCT" ]]; then
+  echo "Error: 'product' parameter is required"
+  exit 1
+fi
+
+if [[ -z "$VERSION" ]]; then
+  echo "Error: 'version' parameter is required"
+  exit 1
+fi
+
+if [[ -z "$WORKFLOW" ]]; then
+  echo "Error: 'workflow' parameter is required"
+  exit 1
+fi
+
+# Validated for every workflow, not just 'minor': the release branch is derived
+# from the major and minor components, so all three must be present and numeric
+# even when no version arithmetic is performed.
+IFS='.' read -r major minor patch <<< "$VERSION"
+for part in "$major" "$minor" "$patch"; do
+  case "$part" in
+    '' | *[!0-9]*)
+      echo "Error: 'version' must be MAJOR.MINOR.PATCH, got '${VERSION}'"
+      exit 1
+      ;;
+  esac
+done
+
+BRANCH="${major}.${minor}"
+STAGING_BASE="https://artifacts-staging.elastic.co/${PRODUCT}/latest"
+SNAPSHOT_BASE="https://storage.googleapis.com/elastic-artifacts-snapshot/${PRODUCT}/latest"
+
+CHECK_LABELS=()
+CHECK_URLS=()
+CHECK_EXPECTED=()
+
+add_check() {
+  CHECK_LABELS+=("$1")
+  CHECK_URLS+=("$2")
+  CHECK_EXPECTED+=("$3")
+}
+
+# Every workflow waits for the release branch to publish both artifacts.
+add_check "staging (${BRANCH})" "${STAGING_BASE}/${BRANCH}.json" "${VERSION}"
+add_check "snapshot (${BRANCH})" "${SNAPSHOT_BASE}/${BRANCH}.json" "${VERSION}-SNAPSHOT"
+
+case "$WORKFLOW" in
+  patch) ;;
+  minor)
+    # A minor bump also moves main on to the next dev minor, so wait for that too.
+    BUMPED_VERSION="${major}.$((minor + 1)).0"
+    add_check "snapshot (main, next minor)" "${SNAPSHOT_BASE}/master.json" "${BUMPED_VERSION}-SNAPSHOT"
+    ;;
+  *)
+    echo "Error: 'workflow' must be 'patch' or 'minor', got '${WORKFLOW}'"
+    exit 1
+    ;;
+esac
+
+echo "Product: ${PRODUCT}"
+echo "Version: ${VERSION}"
+echo "Workflow: ${WORKFLOW}"
+echo "Polling every ${POLLING_INTERVAL}s"
+echo ""
+for i in "${!CHECK_URLS[@]}"; do
+  echo "Check: ${CHECK_LABELS[$i]} -> ${CHECK_URLS[$i]} == ${CHECK_EXPECTED[$i]}"
+done
+echo ""
+
+# Fetch and extract field value
+fetch_field_value() {
+  local url="$1"
+  local response
+  local http_code
+  local body
+  local value
+
+  response=$(curl -sSL -w "\n%{http_code}" "${url}") || { echo "ERROR"; return; }
+
+  http_code=$(echo "$response" | tail -n1)
+  body=$(echo "$response" | sed '$d')
+
+  if [[ "$http_code" -eq 200 ]]; then
+    value=$(echo "$body" | jq -r ".version" 2>/dev/null || echo "ERROR")
+    echo "$value"
+  else
+    echo "HTTP_${http_code}"
+  fi
+}
+
+# Status display
+show_status() {
+  local label="$1"
+  local value="$2"
+  local target="$3"
+
+  if [[ "$value" == "ERROR" ]]; then
+    echo "  ❌ ${label}: Connection error"
+  elif [[ "$value" =~ ^HTTP_ ]]; then
+    local code="${value##HTTP_}"
+    echo "  ❌ ${label}: HTTP status ${code}"
+  elif [[ "$value" == "$target" ]]; then
+    echo "  ✓ ${label}: ${value} (matches!)"
+  elif [[ "$value" == "null" ]]; then
+    echo "  ❌ ${label}: Field not found in JSON"
+  else
+    echo "  ${label}: found ${value} (expected ${target})"
+  fi
+}
+
+while true; do
+  all_pass=true
+  for i in "${!CHECK_URLS[@]}"; do
+    value=$(fetch_field_value "${CHECK_URLS[$i]}")
+    show_status "${CHECK_LABELS[$i]}" "$value" "${CHECK_EXPECTED[$i]}"
+    [[ "$value" == "${CHECK_EXPECTED[$i]}" ]] || all_pass=false
+  done
+
+  if $all_pass; then
+    echo ""
+    echo "✓ All ${#CHECK_URLS[@]} checks passed"
+    exit 0
+  fi
+
+  echo ""
+  sleep "$POLLING_INTERVAL"
+done
