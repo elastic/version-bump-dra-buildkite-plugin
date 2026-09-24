@@ -80,7 +80,7 @@ The plugin polls until every check passes. It has no timeout of its own — the 
 
 ## Use Cases
 
-- ### 1. Wait for a patch bump to publish
+### 1. Wait for a patch bump to publish
 
 Two checks: the staging and snapshot manifests for the `9.5` branch must both report `9.5.4`.
 
@@ -94,7 +94,7 @@ steps:
           workflow: "patch"
 ```
 
-- ### 2. Wait for a minor bump, including main
+### 2. Wait for a minor bump, including main
 
 Three checks. As well as the `9.5` branch reporting `9.5.0`, the snapshot manifest on `main` must report `9.6.0-SNAPSHOT`, confirming development has moved on to the next minor.
 
