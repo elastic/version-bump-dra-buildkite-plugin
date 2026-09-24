@@ -17,8 +17,9 @@ configuration:
       enum: [patch, minor]
       description: The version-bump workflow type, matching the WORKFLOW value passed by the centralized version-bump pipeline.
     polling_interval:
-      type: number
-      description: The polling interval in seconds for the curl
+      type: integer
+      minimum: 1
+      description: The polling interval in seconds for the curl. Must be a positive whole number.
       default: 60
   required:
     - product
