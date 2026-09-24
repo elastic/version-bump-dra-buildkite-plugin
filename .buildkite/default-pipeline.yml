@@ -8,6 +8,11 @@ steps:
     agents:
       provider: "gcp"
       image: family/core-ubuntu-2204
+    if_changed:
+      - "plugin.yml"
+      - "hooks/**"
+      - "lib/**"
+      - "tests/**"
   - label: ":test_tube: Test plugin"
     plugins:
       - plugin-tester#v1.3.0:
@@ -17,3 +22,8 @@ steps:
     agents:
       provider: "gcp"
       image: family/core-ubuntu-2204
+    if_changed:
+      - "plugin.yml"
+      - "hooks/**"
+      - "lib/**"
+      - "tests/**"
