@@ -39,6 +39,14 @@ for part in "$major" "$minor" "$patch"; do
   esac
 done
 
+# Guards the polling loop's sleep. A value of 0 would busy-poll the DRA
+# endpoints, and a non-numeric one would only surface as a cryptic sleep
+# error after the first full round of checks.
+if ! [[ "$POLLING_INTERVAL" =~ ^[0-9]+$ ]] || [[ "$POLLING_INTERVAL" -lt 1 ]]; then
+  echo "Error: 'polling_interval' must be a positive whole number of seconds, got '${POLLING_INTERVAL}'"
+  exit 1
+fi
+
 BRANCH="${major}.${minor}"
 STAGING_BASE="https://artifacts-staging.elastic.co/${PRODUCT}/latest"
 SNAPSHOT_BASE="https://storage.googleapis.com/elastic-artifacts-snapshot/${PRODUCT}/latest"

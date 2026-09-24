@@ -75,7 +75,7 @@ Only `minor` bumps move `main`, which is why it is the only workflow with a thir
 
 | input              | default | description                    |
 | ------------------ | ------- | ------------------------------ |
-| `polling_interval` | `60`    | Seconds to wait between polls. |
+| `polling_interval` | `60`    | Seconds to wait between polls. Must be a positive whole number. |
 
 The plugin polls until every check passes. It has no timeout of its own — the step is bounded by the Buildkite job timeout.
 

@@ -71,6 +71,25 @@ setup() {
   assert_output --partial "'workflow' must be 'patch' or 'minor', got 'major'"
 }
 
+@test "Invalid polling_interval fails before any polling starts" {
+  export BUILDKITE_PLUGIN_VERSION_BUMP_DRA_PRODUCT="beats"
+  export BUILDKITE_PLUGIN_VERSION_BUMP_DRA_VERSION="9.5.0"
+  export BUILDKITE_PLUGIN_VERSION_BUMP_DRA_WORKFLOW="patch"
+
+  # 0 is the dangerous one: sleep 0 returns immediately, so the loop would
+  # hammer the DRA endpoints for the full job timeout.
+  # An empty value is not listed: ${VAR:-60} substitutes the default for null
+  # as well as unset, so it is a valid fall-through to 60 rather than an error.
+  for invalid in 0 00 -5 abc; do
+    export BUILDKITE_PLUGIN_VERSION_BUMP_DRA_POLLING_INTERVAL="$invalid"
+
+    run "$PWD"/hooks/command
+
+    assert_failure
+    assert_output --partial "'polling_interval' must be a positive whole number of seconds"
+  done
+}
+
 @test "Non-semver version fails even for the patch workflow" {
   export BUILDKITE_PLUGIN_VERSION_BUMP_DRA_PRODUCT="beats"
   export BUILDKITE_PLUGIN_VERSION_BUMP_DRA_VERSION="9.5"
