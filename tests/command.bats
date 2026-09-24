@@ -216,11 +216,13 @@ setup() {
   export BUILDKITE_PLUGIN_VERSION_BUMP_DRA_WORKFLOW="patch"
   export BUILDKITE_PLUGIN_VERSION_BUMP_DRA_POLLING_INTERVAL="1"
 
+  # The snapshot is stubbed only once: it matches on the first poll, so the
+  # second poll must fetch the lagging staging URL alone. unstub fails if any
+  # queued response goes unused, which is what proves it is not re-fetched.
   stub curl \
     "-sSL -w * ${STAGING} : printf '%s\n200\n' '{\"version\":\"9.4.0\"}'" \
     "-sSL -w * ${SNAPSHOT} : printf '%s\n200\n' '{\"version\":\"9.5.0-SNAPSHOT\"}'" \
-    "-sSL -w * ${STAGING} : printf '%s\n200\n' '{\"version\":\"9.5.0\"}'" \
-    "-sSL -w * ${SNAPSHOT} : printf '%s\n200\n' '{\"version\":\"9.5.0-SNAPSHOT\"}'"
+    "-sSL -w * ${STAGING} : printf '%s\n200\n' '{\"version\":\"9.5.0\"}'"
 
   run "$PWD"/hooks/command
 
@@ -240,8 +242,7 @@ setup() {
   stub curl \
     "-sSL -w * ${STAGING} : printf '%s\n404\n' 'Not Found'" \
     "-sSL -w * ${SNAPSHOT} : printf '%s\n200\n' '{\"version\":\"9.5.0-SNAPSHOT\"}'" \
-    "-sSL -w * ${STAGING} : printf '%s\n200\n' '{\"version\":\"9.5.0\"}'" \
-    "-sSL -w * ${SNAPSHOT} : printf '%s\n200\n' '{\"version\":\"9.5.0-SNAPSHOT\"}'"
+    "-sSL -w * ${STAGING} : printf '%s\n200\n' '{\"version\":\"9.5.0\"}'"
 
   run "$PWD"/hooks/command
 
@@ -260,8 +261,7 @@ setup() {
   stub curl \
     "-sSL -w * ${STAGING} : printf '%s\n200\n' '{}'" \
     "-sSL -w * ${SNAPSHOT} : printf '%s\n200\n' '{\"version\":\"9.5.0-SNAPSHOT\"}'" \
-    "-sSL -w * ${STAGING} : printf '%s\n200\n' '{\"version\":\"9.5.0\"}'" \
-    "-sSL -w * ${SNAPSHOT} : printf '%s\n200\n' '{\"version\":\"9.5.0-SNAPSHOT\"}'"
+    "-sSL -w * ${STAGING} : printf '%s\n200\n' '{\"version\":\"9.5.0\"}'"
 
   run "$PWD"/hooks/command
 

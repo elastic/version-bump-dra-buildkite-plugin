@@ -121,12 +121,26 @@ show_status() {
   fi
 }
 
+# A check that has already matched is not polled again, so each artifact is
+# fetched only until it appears.
+CHECK_MATCHED=()
+for i in "${!CHECK_URLS[@]}"; do
+  CHECK_MATCHED[i]=false
+done
+
 while true; do
   all_pass=true
   for i in "${!CHECK_URLS[@]}"; do
+    "${CHECK_MATCHED[$i]}" && continue
+
     value=$(fetch_field_value "${CHECK_URLS[$i]}")
     show_status "${CHECK_LABELS[$i]}" "$value" "${CHECK_EXPECTED[$i]}"
-    [[ "$value" == "${CHECK_EXPECTED[$i]}" ]] || all_pass=false
+
+    if [[ "$value" == "${CHECK_EXPECTED[$i]}" ]]; then
+      CHECK_MATCHED[i]=true
+    else
+      all_pass=false
+    fi
   done
 
   if $all_pass; then
