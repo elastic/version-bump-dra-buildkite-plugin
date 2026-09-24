@@ -1,0 +1,4 @@
+.vscode
+
+# hermit's local package cache (python bytecode from pre-commit's runtime)
+.hermit

@@ -1,14 +1,19 @@
 ---
 # $yaml-language-server: $schema=https://raw.githubusercontent.com/buildkite/pipeline-schema/main/schema.json
 steps:
-  - label: "Build"
-    command: "true"
-
-  - label: "Test"
-    command: "true"
-
-  - label: "Deploy"
-    command: "true"
-
-  - label: "Publish"
-    command: "true"
+  - label: ":sparkles: Buildkite plugin Lint"
+    plugins:
+      - plugin-linter#v3.3.0:
+          id: elastic/version-bump-dra
+    agents:
+      provider: "gcp"
+      image: family/core-ubuntu-2204
+  - label: ":test_tube: Test plugin"
+    plugins:
+      - plugin-tester#v1.3.0:
+          folders:
+            - tests
+          version: v4.3.0
+    agents:
+      provider: "gcp"
+      image: family/core-ubuntu-2204
