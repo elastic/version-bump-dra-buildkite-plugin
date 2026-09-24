@@ -157,21 +157,35 @@ setup() {
   unstub curl
 }
 
-@test "Workflow minor resets the patch component when bumping" {
+@test "Workflow minor rejects a version that is not a X.Y.0 release" {
+  export BUILDKITE_PLUGIN_VERSION_BUMP_DRA_PRODUCT="beats"
+  export BUILDKITE_PLUGIN_VERSION_BUMP_DRA_WORKFLOW="minor"
+
+  # Both would otherwise be accepted and watch a plausible but wrong set of
+  # manifests: 9.5 for the release branch, 9.6.0-SNAPSHOT for main.
+  for invalid in 9.5.5 9.5.9; do
+    export BUILDKITE_PLUGIN_VERSION_BUMP_DRA_VERSION="$invalid"
+
+    run "$PWD"/hooks/command
+
+    assert_failure
+    assert_output --partial "'workflow' is 'minor' but 'version' is not a X.Y.0 release, got '${invalid}'"
+  done
+}
+
+@test "Workflow patch accepts a non-zero patch component" {
   export BUILDKITE_PLUGIN_VERSION_BUMP_DRA_PRODUCT="beats"
   export BUILDKITE_PLUGIN_VERSION_BUMP_DRA_VERSION="9.5.9"
-  export BUILDKITE_PLUGIN_VERSION_BUMP_DRA_WORKFLOW="minor"
+  export BUILDKITE_PLUGIN_VERSION_BUMP_DRA_WORKFLOW="patch"
 
   stub curl \
     "-sSL -w * ${STAGING} : printf '%s\n200\n' '{\"version\":\"9.5.9\"}'" \
-    "-sSL -w * ${SNAPSHOT} : printf '%s\n200\n' '{\"version\":\"9.5.9-SNAPSHOT\"}'" \
-    "-sSL -w * ${MASTER} : printf '%s\n200\n' '{\"version\":\"9.6.0-SNAPSHOT\"}'"
+    "-sSL -w * ${SNAPSHOT} : printf '%s\n200\n' '{\"version\":\"9.5.9-SNAPSHOT\"}'"
 
   run "$PWD"/hooks/command
 
   assert_success
-  assert_output --partial "master.json == 9.6.0-SNAPSHOT"
-  refute_output --partial "9.5.10"
+  refute_output --partial "master.json"
 
   unstub curl
 }

@@ -68,6 +68,14 @@ add_check "snapshot (${BRANCH})" "${SNAPSHOT_BASE}/${BRANCH}.json" "${VERSION}-S
 case "$WORKFLOW" in
   patch) ;;
   minor)
+    # A minor release always targets X.Y.0. A patch version here means the
+    # pipeline passed a 'version' that disagrees with its 'workflow', which
+    # would otherwise watch a plausible-looking but wrong set of manifests.
+    if [[ "$patch" -ne 0 ]]; then
+      echo "Error: 'workflow' is 'minor' but 'version' is not a X.Y.0 release, got '${VERSION}'"
+      exit 1
+    fi
+
     # A minor bump also moves main on to the next dev minor, so wait for that too.
     BUMPED_VERSION="${major}.$((minor + 1)).0"
     add_check "snapshot (main, next minor)" "${SNAPSHOT_BASE}/master.json" "${BUMPED_VERSION}-SNAPSHOT"
