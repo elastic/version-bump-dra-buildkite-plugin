@@ -180,7 +180,11 @@ for i in "${!CHECK_URLS[@]}"; do
   CHECK_MATCHED[i]=false
 done
 
-first_poll=true
+# Tracks whether any check has ever matched. That is what makes an all-404
+# round meaningful: a wrong 'product' breaks every path at once, so once one
+# check has resolved the product is provably valid and a 404 on the rest can
+# only be a lagging artifact.
+any_matched=false
 
 while true; do
   all_pass=true
@@ -194,6 +198,7 @@ while true; do
 
     if [[ "$value" == "${CHECK_EXPECTED[$i]}" ]]; then
       CHECK_MATCHED[i]=true
+      any_matched=true
     else
       all_pass=false
     fi
@@ -211,15 +216,15 @@ while true; do
   # rolling alias, so it resolves with the previous version and the loop waits
   # for it to move. Every manifest 404ing at once means the path itself does
   # not exist, which no amount of waiting fixes — almost always a wrong
-  # 'product'. Only meaningful on the first poll, where that shows up.
-  if $first_poll && $all_404; then
+  # 'product'. Evaluated every round until something matches, so an
+  # inconclusive round defers the decision rather than discarding it.
+  if ! $any_matched && $all_404; then
     echo ""
-    echo "Error: every manifest returned HTTP 404 on the first poll."
+    echo "Error: every manifest returned HTTP 404."
     echo "       This usually means 'product' is wrong. It must match the DRA"
     echo "       artifact path, which is not always the repository name (got '${PRODUCT}')."
     exit 1
   fi
-  first_poll=false
 
   echo ""
   sleep "$POLLING_INTERVAL"

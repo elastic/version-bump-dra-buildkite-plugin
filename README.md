@@ -55,11 +55,11 @@ Check: snapshot (main, next minor) -> https://artifacts-snapshot.elastic.co/beat
 
 ### Required input
 
-| input      | description                                                                                                                                                                              |
-| ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `product`  | DRA product name as it appears in the artifact path, for example `beats` or `apm-server`. This is not always identical to the repository name.                                           |
+| input      | description                                                                                                                                                                                                                        |
+| ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `product`  | DRA product name as it appears in the artifact path, for example `beats` or `apm-server`. This is not always identical to the repository name.                                                                                     |
 | `version`  | Target `MAJOR.MINOR.PATCH` version after the bump — the `NEW_VERSION` passed by the centralized version-bump pipeline. The release branch is derived from it by dropping the patch component, so `9.5.3` watches the `9.5` branch. |
-| `workflow` | One of `patch` or `minor`. Determines which checks run.                                                                                                                                  |
+| `workflow` | One of `patch` or `minor`. Determines which checks run.                                                                                                                                                                            |
 
 The `workflow` value selects the checks:
 
@@ -79,12 +79,12 @@ Only `minor` bumps move `main`, which is why it is the only workflow with a thir
 
 ### Optional input
 
-| input              | default | description                    |
-| ------------------ | ------- | ------------------------------ |
-| `polling_interval` | `60`    | Seconds to wait between polls. Must be a positive whole number. |
+| input              | default | description                                                                     |
+| ------------------ | ------- | ------------------------------------------------------------------------------- |
+| `polling_interval` | `60`    | Seconds to wait between polls. Must be a positive whole number.                 |
 | `dry_run`          | `false` | Print the checks that would be polled, then exit 0 without making any requests. |
 
-The plugin polls until every check passes. It has no timeout of its own — the step is bounded by the Buildkite job timeout.
+The plugin polls until every check passes. Apart from the failure described under [Failing fast](#failing-fast) it has no timeout of its own — the step is bounded by the Buildkite job timeout.
 
 ### Dry run
 
@@ -116,13 +116,29 @@ Validation still runs first, so a `product`, `version` or `workflow` mistake is 
 **A dry run verifies nothing and the step still passes.** Left enabled by accident it disables the gate while reporting success, so it belongs in a pipeline only while the step is being set up. To skip the check as part of a wider dry run of the pipeline, prefer an `if:` on the step — Buildkite then reports it as skipped rather than passed:
 
 ```yaml
-  - label: "Wait for DRA artifacts"
-    if: build.env("DRY_RUN") != "true"
+- label: "Wait for DRA artifacts"
+  if: build.env("DRY_RUN") != "true"
 ```
 
 ### Failing fast
 
-There is one case it will not wait for. An artifact that has not published yet still returns HTTP 200, because `<branch>.json` is a rolling alias that reports the previous version until the new one lands — that is the normal case the polling loop exists for. Every manifest returning 404 instead means the path does not exist at all, which waiting cannot fix and which almost always means `product` is wrong. The step fails on the first poll in that case.
+Each poll answers two separate questions, and it matters which is which.
+
+| checked                | answers                             | when it is wrong                      |
+| ---------------------- | ----------------------------------- | ------------------------------------- |
+| HTTP status            | does this product and branch exist? | the request 404s                      |
+| `.version` in the body | has the bump published yet?         | the version is still the previous one |
+
+**Waiting is for the version, never for the status.** `latest/<branch>.json` is a rolling alias: once a branch has published anything, the URL always resolves and simply reports the previous version until the new one lands. So a version that has not published yet returns HTTP 200 with the old value — that is the ordinary case the polling loop exists for, and it can take hours.
+
+A 404 is a different kind of problem. It means the path itself does not exist, so no amount of waiting will produce it. The usual cause is a `product` that does not match the DRA artifact path, which is not always the repository name. Rather than poll a typo until the job times out, the step fails.
+
+Two conditions must both hold before it does, because a lone 404 is legitimate:
+
+- **Every** manifest 404s, not just one. A freshly cut release branch has published nothing yet, so its manifests 404 while `master.json` is already live.
+- **No** manifest has resolved yet. A wrong `product` breaks every path at once, so a single successful check proves the product is valid — after that, a 404 on the rest can only be an artifact that has not been built yet.
+
+While neither has been established the plugin keeps polling, so an inconclusive round — a connection error, defers the decision to the next one rather than suppressing it.
 
 ## Use Cases
 

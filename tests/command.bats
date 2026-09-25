@@ -360,7 +360,7 @@ setup() {
   unstub curl
 }
 
-@test "Every manifest returning 404 on the first poll fails fast" {
+@test "Every manifest returning 404 fails fast" {
   export BUILDKITE_PLUGIN_VERSION_BUMP_DRA_PRODUCT="beats"
   export BUILDKITE_PLUGIN_VERSION_BUMP_DRA_VERSION="9.5.4"
   export BUILDKITE_PLUGIN_VERSION_BUMP_DRA_WORKFLOW="patch"
@@ -376,8 +376,57 @@ setup() {
   run "$PWD"/hooks/command
 
   assert_failure
-  assert_output --partial "every manifest returned HTTP 404 on the first poll"
+  assert_output --partial "every manifest returned HTTP 404"
   assert_output --partial "got 'beats'"
+
+  unstub curl
+}
+
+@test "Fail fast survives an inconclusive first round" {
+  export BUILDKITE_PLUGIN_VERSION_BUMP_DRA_PRODUCT="beats"
+  export BUILDKITE_PLUGIN_VERSION_BUMP_DRA_VERSION="9.5.4"
+  export BUILDKITE_PLUGIN_VERSION_BUMP_DRA_WORKFLOW="patch"
+  export BUILDKITE_PLUGIN_VERSION_BUMP_DRA_POLLING_INTERVAL="1"
+
+  # One endpoint erroring on the first round must not discard the check: the
+  # second round is unambiguous and has to act on it. Evaluating only once
+  # would sleep past this and poll until the job timed out. Two rounds are
+  # stubbed, so reaching a third fails on an unexpected curl call.
+  stub curl \
+    "${CURL_MATCH} ${STAGING} : exit 1" \
+    "${CURL_MATCH} ${SNAPSHOT} : printf '%s\n404\n' 'Not Found'" \
+    "${CURL_MATCH} ${STAGING} : printf '%s\n404\n' 'Not Found'" \
+    "${CURL_MATCH} ${SNAPSHOT} : printf '%s\n404\n' 'Not Found'"
+
+  run "$PWD"/hooks/command
+
+  assert_failure
+  assert_output --partial "Connection error"
+  assert_output --partial "every manifest returned HTTP 404"
+
+  unstub curl
+}
+
+@test "A matched check stops fail fast firing on a lagging 404" {
+  export BUILDKITE_PLUGIN_VERSION_BUMP_DRA_PRODUCT="beats"
+  export BUILDKITE_PLUGIN_VERSION_BUMP_DRA_VERSION="9.5.4"
+  export BUILDKITE_PLUGIN_VERSION_BUMP_DRA_WORKFLOW="patch"
+  export BUILDKITE_PLUGIN_VERSION_BUMP_DRA_POLLING_INTERVAL="1"
+
+  # Once staging matches, snapshot is the only check still polled, so every
+  # fetched check 404ing no longer means the path is wrong — the product is
+  # provably valid. This must keep polling until the lagging artifact lands.
+  stub curl \
+    "${CURL_MATCH} ${STAGING} : printf '%s\n200\n' '{\"version\":\"9.5.4\"}'" \
+    "${CURL_MATCH} ${SNAPSHOT} : printf '%s\n404\n' 'Not Found'" \
+    "${CURL_MATCH} ${SNAPSHOT} : printf '%s\n404\n' 'Not Found'" \
+    "${CURL_MATCH} ${SNAPSHOT} : printf '%s\n200\n' '{\"version\":\"9.5.4-SNAPSHOT\"}'"
+
+  run "$PWD"/hooks/command
+
+  assert_success
+  refute_output --partial "every manifest returned HTTP 404"
+  assert_output --partial "✓ All 2 checks passed"
 
   unstub curl
 }
