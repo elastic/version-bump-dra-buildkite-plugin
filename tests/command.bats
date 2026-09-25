@@ -121,12 +121,12 @@ setup() {
 
 @test "Workflow patch builds only the two release-branch checks" {
   export BUILDKITE_PLUGIN_VERSION_BUMP_DRA_PRODUCT="beats"
-  export BUILDKITE_PLUGIN_VERSION_BUMP_DRA_VERSION="9.5.0"
+  export BUILDKITE_PLUGIN_VERSION_BUMP_DRA_VERSION="9.5.4"
   export BUILDKITE_PLUGIN_VERSION_BUMP_DRA_WORKFLOW="patch"
 
   stub curl \
-    "-sSL -w * ${STAGING} : printf '%s\n200\n' '{\"version\":\"9.5.0\"}'" \
-    "-sSL -w * ${SNAPSHOT} : printf '%s\n200\n' '{\"version\":\"9.5.0-SNAPSHOT\"}'"
+    "-sSL -w * ${STAGING} : printf '%s\n200\n' '{\"version\":\"9.5.4\"}'" \
+    "-sSL -w * ${SNAPSHOT} : printf '%s\n200\n' '{\"version\":\"9.5.4-SNAPSHOT\"}'"
 
   run "$PWD"/hooks/command
 
@@ -190,14 +190,30 @@ setup() {
   unstub curl
 }
 
+@test "Workflow patch rejects a X.Y.0 release" {
+  export BUILDKITE_PLUGIN_VERSION_BUMP_DRA_PRODUCT="beats"
+  export BUILDKITE_PLUGIN_VERSION_BUMP_DRA_WORKFLOW="patch"
+
+  # X.Y.0 is a minor. Accepted here it would watch the right two manifests but
+  # skip the main-branch check, which is the gap the plugin exists to close.
+  for invalid in 9.5.0 9.5.00; do
+    export BUILDKITE_PLUGIN_VERSION_BUMP_DRA_VERSION="$invalid"
+
+    run "$PWD"/hooks/command
+
+    assert_failure
+    assert_output --partial "'workflow' is 'patch' but 'version' is a X.Y.0 release, got '${invalid}'"
+  done
+}
+
 @test "Default polling interval of 60s is used when omitted" {
   export BUILDKITE_PLUGIN_VERSION_BUMP_DRA_PRODUCT="beats"
-  export BUILDKITE_PLUGIN_VERSION_BUMP_DRA_VERSION="9.5.0"
+  export BUILDKITE_PLUGIN_VERSION_BUMP_DRA_VERSION="9.5.4"
   export BUILDKITE_PLUGIN_VERSION_BUMP_DRA_WORKFLOW="patch"
 
   stub curl \
-    "-sSL -w * ${STAGING} : printf '%s\n200\n' '{\"version\":\"9.5.0\"}'" \
-    "-sSL -w * ${SNAPSHOT} : printf '%s\n200\n' '{\"version\":\"9.5.0-SNAPSHOT\"}'"
+    "-sSL -w * ${STAGING} : printf '%s\n200\n' '{\"version\":\"9.5.4\"}'" \
+    "-sSL -w * ${SNAPSHOT} : printf '%s\n200\n' '{\"version\":\"9.5.4-SNAPSHOT\"}'"
 
   run "$PWD"/hooks/command
 
@@ -209,13 +225,13 @@ setup() {
 
 @test "Custom polling interval is respected" {
   export BUILDKITE_PLUGIN_VERSION_BUMP_DRA_PRODUCT="beats"
-  export BUILDKITE_PLUGIN_VERSION_BUMP_DRA_VERSION="9.5.0"
+  export BUILDKITE_PLUGIN_VERSION_BUMP_DRA_VERSION="9.5.4"
   export BUILDKITE_PLUGIN_VERSION_BUMP_DRA_WORKFLOW="patch"
   export BUILDKITE_PLUGIN_VERSION_BUMP_DRA_POLLING_INTERVAL="5"
 
   stub curl \
-    "-sSL -w * ${STAGING} : printf '%s\n200\n' '{\"version\":\"9.5.0\"}'" \
-    "-sSL -w * ${SNAPSHOT} : printf '%s\n200\n' '{\"version\":\"9.5.0-SNAPSHOT\"}'"
+    "-sSL -w * ${STAGING} : printf '%s\n200\n' '{\"version\":\"9.5.4\"}'" \
+    "-sSL -w * ${SNAPSHOT} : printf '%s\n200\n' '{\"version\":\"9.5.4-SNAPSHOT\"}'"
 
   run "$PWD"/hooks/command
 
@@ -227,17 +243,17 @@ setup() {
 
 @test "All checks matching on the first poll exits successfully" {
   export BUILDKITE_PLUGIN_VERSION_BUMP_DRA_PRODUCT="beats"
-  export BUILDKITE_PLUGIN_VERSION_BUMP_DRA_VERSION="9.5.0"
+  export BUILDKITE_PLUGIN_VERSION_BUMP_DRA_VERSION="9.5.4"
   export BUILDKITE_PLUGIN_VERSION_BUMP_DRA_WORKFLOW="patch"
 
   stub curl \
-    "-sSL -w * ${STAGING} : printf '%s\n200\n' '{\"version\":\"9.5.0\"}'" \
-    "-sSL -w * ${SNAPSHOT} : printf '%s\n200\n' '{\"version\":\"9.5.0-SNAPSHOT\"}'"
+    "-sSL -w * ${STAGING} : printf '%s\n200\n' '{\"version\":\"9.5.4\"}'" \
+    "-sSL -w * ${SNAPSHOT} : printf '%s\n200\n' '{\"version\":\"9.5.4-SNAPSHOT\"}'"
 
   run "$PWD"/hooks/command
 
   assert_success
-  assert_output --partial "✓ staging (9.5): 9.5.0 (matches!)"
+  assert_output --partial "✓ staging (9.5): 9.5.4 (matches!)"
   assert_output --partial "✓ All 2 checks passed"
 
   unstub curl
@@ -245,7 +261,7 @@ setup() {
 
 @test "Polling continues until a lagging artifact catches up" {
   export BUILDKITE_PLUGIN_VERSION_BUMP_DRA_PRODUCT="beats"
-  export BUILDKITE_PLUGIN_VERSION_BUMP_DRA_VERSION="9.5.0"
+  export BUILDKITE_PLUGIN_VERSION_BUMP_DRA_VERSION="9.5.4"
   export BUILDKITE_PLUGIN_VERSION_BUMP_DRA_WORKFLOW="patch"
   export BUILDKITE_PLUGIN_VERSION_BUMP_DRA_POLLING_INTERVAL="1"
 
@@ -253,14 +269,14 @@ setup() {
   # second poll must fetch the lagging staging URL alone. unstub fails if any
   # queued response goes unused, which is what proves it is not re-fetched.
   stub curl \
-    "-sSL -w * ${STAGING} : printf '%s\n200\n' '{\"version\":\"9.4.0\"}'" \
-    "-sSL -w * ${SNAPSHOT} : printf '%s\n200\n' '{\"version\":\"9.5.0-SNAPSHOT\"}'" \
-    "-sSL -w * ${STAGING} : printf '%s\n200\n' '{\"version\":\"9.5.0\"}'"
+    "-sSL -w * ${STAGING} : printf '%s\n200\n' '{\"version\":\"9.5.3\"}'" \
+    "-sSL -w * ${SNAPSHOT} : printf '%s\n200\n' '{\"version\":\"9.5.4-SNAPSHOT\"}'" \
+    "-sSL -w * ${STAGING} : printf '%s\n200\n' '{\"version\":\"9.5.4\"}'"
 
   run "$PWD"/hooks/command
 
   assert_success
-  assert_output --partial "staging (9.5): found 9.4.0 (expected 9.5.0)"
+  assert_output --partial "staging (9.5): found 9.5.3 (expected 9.5.4)"
   assert_output --partial "✓ All 2 checks passed"
 
   unstub curl
@@ -268,14 +284,14 @@ setup() {
 
 @test "A non-200 response is reported as an HTTP status" {
   export BUILDKITE_PLUGIN_VERSION_BUMP_DRA_PRODUCT="beats"
-  export BUILDKITE_PLUGIN_VERSION_BUMP_DRA_VERSION="9.5.0"
+  export BUILDKITE_PLUGIN_VERSION_BUMP_DRA_VERSION="9.5.4"
   export BUILDKITE_PLUGIN_VERSION_BUMP_DRA_WORKFLOW="patch"
   export BUILDKITE_PLUGIN_VERSION_BUMP_DRA_POLLING_INTERVAL="1"
 
   stub curl \
     "-sSL -w * ${STAGING} : printf '%s\n404\n' 'Not Found'" \
-    "-sSL -w * ${SNAPSHOT} : printf '%s\n200\n' '{\"version\":\"9.5.0-SNAPSHOT\"}'" \
-    "-sSL -w * ${STAGING} : printf '%s\n200\n' '{\"version\":\"9.5.0\"}'"
+    "-sSL -w * ${SNAPSHOT} : printf '%s\n200\n' '{\"version\":\"9.5.4-SNAPSHOT\"}'" \
+    "-sSL -w * ${STAGING} : printf '%s\n200\n' '{\"version\":\"9.5.4\"}'"
 
   run "$PWD"/hooks/command
 
@@ -287,14 +303,14 @@ setup() {
 
 @test "A manifest without a version field is reported as a missing field" {
   export BUILDKITE_PLUGIN_VERSION_BUMP_DRA_PRODUCT="beats"
-  export BUILDKITE_PLUGIN_VERSION_BUMP_DRA_VERSION="9.5.0"
+  export BUILDKITE_PLUGIN_VERSION_BUMP_DRA_VERSION="9.5.4"
   export BUILDKITE_PLUGIN_VERSION_BUMP_DRA_WORKFLOW="patch"
   export BUILDKITE_PLUGIN_VERSION_BUMP_DRA_POLLING_INTERVAL="1"
 
   stub curl \
     "-sSL -w * ${STAGING} : printf '%s\n200\n' '{}'" \
-    "-sSL -w * ${SNAPSHOT} : printf '%s\n200\n' '{\"version\":\"9.5.0-SNAPSHOT\"}'" \
-    "-sSL -w * ${STAGING} : printf '%s\n200\n' '{\"version\":\"9.5.0\"}'"
+    "-sSL -w * ${SNAPSHOT} : printf '%s\n200\n' '{\"version\":\"9.5.4-SNAPSHOT\"}'" \
+    "-sSL -w * ${STAGING} : printf '%s\n200\n' '{\"version\":\"9.5.4\"}'"
 
   run "$PWD"/hooks/command
 
