@@ -42,8 +42,8 @@ Workflow: minor
 Polling every 60s
 
 Check: staging (9.5) -> https://artifacts-staging.elastic.co/beats/latest/9.5.json == 9.5.0
-Check: snapshot (9.5) -> https://storage.googleapis.com/elastic-artifacts-snapshot/beats/latest/9.5.json == 9.5.0-SNAPSHOT
-Check: snapshot (main, next minor) -> https://storage.googleapis.com/elastic-artifacts-snapshot/beats/latest/master.json == 9.6.0-SNAPSHOT
+Check: snapshot (9.5) -> https://artifacts-snapshot.elastic.co/beats/latest/9.5.json == 9.5.0-SNAPSHOT
+Check: snapshot (main, next minor) -> https://artifacts-snapshot.elastic.co/beats/latest/master.json == 9.6.0-SNAPSHOT
 
   ✓ staging (9.5): 9.5.0 (matches!)
   ✓ snapshot (9.5): 9.5.0-SNAPSHOT (matches!)
@@ -57,7 +57,7 @@ Check: snapshot (main, next minor) -> https://storage.googleapis.com/elastic-art
 | input      | description                                                                                                                                                                              |
 | ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `product`  | DRA product name as it appears in the artifact path, for example `beats` or `apm-server`. This is not always identical to the repository name.                                           |
-| `version`  | The full `MAJOR.MINOR.PATCH` version being bumped to, for example `9.5.0`. The release branch is derived from this by dropping the patch component, so `9.5.3` watches the `9.5` branch. |
+| `version`  | Target `MAJOR.MINOR.PATCH` version after the bump — the `NEW_VERSION` passed by the centralized version-bump pipeline. The release branch is derived from it by dropping the patch component, so `9.5.3` watches the `9.5` branch. |
 | `workflow` | One of `patch` or `minor`. Determines which checks run.                                                                                                                                  |
 
 The `workflow` value selects the checks:

@@ -49,7 +49,7 @@ fi
 
 BRANCH="${major}.${minor}"
 STAGING_BASE="https://artifacts-staging.elastic.co/${PRODUCT}/latest"
-SNAPSHOT_BASE="https://storage.googleapis.com/elastic-artifacts-snapshot/${PRODUCT}/latest"
+SNAPSHOT_BASE="https://artifacts-snapshot.elastic.co/${PRODUCT}/latest"
 
 CHECK_LABELS=()
 CHECK_URLS=()
@@ -112,7 +112,10 @@ fetch_field_value() {
   local body
   local value
 
-  response=$(curl -sSL -w "\n%{http_code}" "${url}") || { echo "ERROR"; return; }
+  # Without these a hung connection stalls the whole attempt until the job
+  # timeout. Bounding each request instead lets the poll fail and be retried on
+  # the next iteration, which is what the loop is for.
+  response=$(curl -sSL --connect-timeout 10 --max-time 60 -w "\n%{http_code}" "${url}") || { echo "ERROR"; return; }
 
   http_code=$(echo "$response" | tail -n1)
   body=$(echo "$response" | sed '$d')

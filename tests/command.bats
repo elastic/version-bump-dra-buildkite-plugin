@@ -11,9 +11,14 @@ setup() {
   # since the polling loop has no bound of its own.
   export BATS_TEST_TIMEOUT=30
 
+  # The argument list every stub matches on, up to but not including the URL.
+  # Kept in one place so a change to the curl flags is a one-line edit here
+  # rather than an edit to every stub below.
+  CURL_MATCH="-sSL --connect-timeout 10 --max-time 60 -w *"
+
   STAGING="https://artifacts-staging.elastic.co/beats/latest/9.5.json"
-  SNAPSHOT="https://storage.googleapis.com/elastic-artifacts-snapshot/beats/latest/9.5.json"
-  MASTER="https://storage.googleapis.com/elastic-artifacts-snapshot/beats/latest/master.json"
+  SNAPSHOT="https://artifacts-snapshot.elastic.co/beats/latest/9.5.json"
+  MASTER="https://artifacts-snapshot.elastic.co/beats/latest/master.json"
 }
 
 # Every stubbed test queues a final response that matches the expected value, so
@@ -107,8 +112,8 @@ setup() {
   export BUILDKITE_PLUGIN_VERSION_BUMP_DRA_WORKFLOW="patch"
 
   stub curl \
-    "-sSL -w * ${STAGING} : printf '%s\n200\n' '{\"version\":\"9.5.3\"}'" \
-    "-sSL -w * ${SNAPSHOT} : printf '%s\n200\n' '{\"version\":\"9.5.3-SNAPSHOT\"}'"
+    "${CURL_MATCH} ${STAGING} : printf '%s\n200\n' '{\"version\":\"9.5.3\"}'" \
+    "${CURL_MATCH} ${SNAPSHOT} : printf '%s\n200\n' '{\"version\":\"9.5.3-SNAPSHOT\"}'"
 
   run "$PWD"/hooks/command
 
@@ -125,8 +130,8 @@ setup() {
   export BUILDKITE_PLUGIN_VERSION_BUMP_DRA_WORKFLOW="patch"
 
   stub curl \
-    "-sSL -w * ${STAGING} : printf '%s\n200\n' '{\"version\":\"9.5.4\"}'" \
-    "-sSL -w * ${SNAPSHOT} : printf '%s\n200\n' '{\"version\":\"9.5.4-SNAPSHOT\"}'"
+    "${CURL_MATCH} ${STAGING} : printf '%s\n200\n' '{\"version\":\"9.5.4\"}'" \
+    "${CURL_MATCH} ${SNAPSHOT} : printf '%s\n200\n' '{\"version\":\"9.5.4-SNAPSHOT\"}'"
 
   run "$PWD"/hooks/command
 
@@ -144,9 +149,9 @@ setup() {
   export BUILDKITE_PLUGIN_VERSION_BUMP_DRA_WORKFLOW="minor"
 
   stub curl \
-    "-sSL -w * ${STAGING} : printf '%s\n200\n' '{\"version\":\"9.5.0\"}'" \
-    "-sSL -w * ${SNAPSHOT} : printf '%s\n200\n' '{\"version\":\"9.5.0-SNAPSHOT\"}'" \
-    "-sSL -w * ${MASTER} : printf '%s\n200\n' '{\"version\":\"9.6.0-SNAPSHOT\"}'"
+    "${CURL_MATCH} ${STAGING} : printf '%s\n200\n' '{\"version\":\"9.5.0\"}'" \
+    "${CURL_MATCH} ${SNAPSHOT} : printf '%s\n200\n' '{\"version\":\"9.5.0-SNAPSHOT\"}'" \
+    "${CURL_MATCH} ${MASTER} : printf '%s\n200\n' '{\"version\":\"9.6.0-SNAPSHOT\"}'"
 
   run "$PWD"/hooks/command
 
@@ -179,8 +184,8 @@ setup() {
   export BUILDKITE_PLUGIN_VERSION_BUMP_DRA_WORKFLOW="patch"
 
   stub curl \
-    "-sSL -w * ${STAGING} : printf '%s\n200\n' '{\"version\":\"9.5.9\"}'" \
-    "-sSL -w * ${SNAPSHOT} : printf '%s\n200\n' '{\"version\":\"9.5.9-SNAPSHOT\"}'"
+    "${CURL_MATCH} ${STAGING} : printf '%s\n200\n' '{\"version\":\"9.5.9\"}'" \
+    "${CURL_MATCH} ${SNAPSHOT} : printf '%s\n200\n' '{\"version\":\"9.5.9-SNAPSHOT\"}'"
 
   run "$PWD"/hooks/command
 
@@ -212,8 +217,8 @@ setup() {
   export BUILDKITE_PLUGIN_VERSION_BUMP_DRA_WORKFLOW="patch"
 
   stub curl \
-    "-sSL -w * ${STAGING} : printf '%s\n200\n' '{\"version\":\"9.5.4\"}'" \
-    "-sSL -w * ${SNAPSHOT} : printf '%s\n200\n' '{\"version\":\"9.5.4-SNAPSHOT\"}'"
+    "${CURL_MATCH} ${STAGING} : printf '%s\n200\n' '{\"version\":\"9.5.4\"}'" \
+    "${CURL_MATCH} ${SNAPSHOT} : printf '%s\n200\n' '{\"version\":\"9.5.4-SNAPSHOT\"}'"
 
   run "$PWD"/hooks/command
 
@@ -230,8 +235,8 @@ setup() {
   export BUILDKITE_PLUGIN_VERSION_BUMP_DRA_POLLING_INTERVAL="5"
 
   stub curl \
-    "-sSL -w * ${STAGING} : printf '%s\n200\n' '{\"version\":\"9.5.4\"}'" \
-    "-sSL -w * ${SNAPSHOT} : printf '%s\n200\n' '{\"version\":\"9.5.4-SNAPSHOT\"}'"
+    "${CURL_MATCH} ${STAGING} : printf '%s\n200\n' '{\"version\":\"9.5.4\"}'" \
+    "${CURL_MATCH} ${SNAPSHOT} : printf '%s\n200\n' '{\"version\":\"9.5.4-SNAPSHOT\"}'"
 
   run "$PWD"/hooks/command
 
@@ -247,8 +252,8 @@ setup() {
   export BUILDKITE_PLUGIN_VERSION_BUMP_DRA_WORKFLOW="patch"
 
   stub curl \
-    "-sSL -w * ${STAGING} : printf '%s\n200\n' '{\"version\":\"9.5.4\"}'" \
-    "-sSL -w * ${SNAPSHOT} : printf '%s\n200\n' '{\"version\":\"9.5.4-SNAPSHOT\"}'"
+    "${CURL_MATCH} ${STAGING} : printf '%s\n200\n' '{\"version\":\"9.5.4\"}'" \
+    "${CURL_MATCH} ${SNAPSHOT} : printf '%s\n200\n' '{\"version\":\"9.5.4-SNAPSHOT\"}'"
 
   run "$PWD"/hooks/command
 
@@ -269,9 +274,9 @@ setup() {
   # second poll must fetch the lagging staging URL alone. unstub fails if any
   # queued response goes unused, which is what proves it is not re-fetched.
   stub curl \
-    "-sSL -w * ${STAGING} : printf '%s\n200\n' '{\"version\":\"9.5.3\"}'" \
-    "-sSL -w * ${SNAPSHOT} : printf '%s\n200\n' '{\"version\":\"9.5.4-SNAPSHOT\"}'" \
-    "-sSL -w * ${STAGING} : printf '%s\n200\n' '{\"version\":\"9.5.4\"}'"
+    "${CURL_MATCH} ${STAGING} : printf '%s\n200\n' '{\"version\":\"9.5.3\"}'" \
+    "${CURL_MATCH} ${SNAPSHOT} : printf '%s\n200\n' '{\"version\":\"9.5.4-SNAPSHOT\"}'" \
+    "${CURL_MATCH} ${STAGING} : printf '%s\n200\n' '{\"version\":\"9.5.4\"}'"
 
   run "$PWD"/hooks/command
 
@@ -289,9 +294,9 @@ setup() {
   export BUILDKITE_PLUGIN_VERSION_BUMP_DRA_POLLING_INTERVAL="1"
 
   stub curl \
-    "-sSL -w * ${STAGING} : printf '%s\n404\n' 'Not Found'" \
-    "-sSL -w * ${SNAPSHOT} : printf '%s\n200\n' '{\"version\":\"9.5.4-SNAPSHOT\"}'" \
-    "-sSL -w * ${STAGING} : printf '%s\n200\n' '{\"version\":\"9.5.4\"}'"
+    "${CURL_MATCH} ${STAGING} : printf '%s\n404\n' 'Not Found'" \
+    "${CURL_MATCH} ${SNAPSHOT} : printf '%s\n200\n' '{\"version\":\"9.5.4-SNAPSHOT\"}'" \
+    "${CURL_MATCH} ${STAGING} : printf '%s\n200\n' '{\"version\":\"9.5.4\"}'"
 
   run "$PWD"/hooks/command
 
@@ -308,9 +313,9 @@ setup() {
   export BUILDKITE_PLUGIN_VERSION_BUMP_DRA_POLLING_INTERVAL="1"
 
   stub curl \
-    "-sSL -w * ${STAGING} : printf '%s\n200\n' '{}'" \
-    "-sSL -w * ${SNAPSHOT} : printf '%s\n200\n' '{\"version\":\"9.5.4-SNAPSHOT\"}'" \
-    "-sSL -w * ${STAGING} : printf '%s\n200\n' '{\"version\":\"9.5.4\"}'"
+    "${CURL_MATCH} ${STAGING} : printf '%s\n200\n' '{}'" \
+    "${CURL_MATCH} ${SNAPSHOT} : printf '%s\n200\n' '{\"version\":\"9.5.4-SNAPSHOT\"}'" \
+    "${CURL_MATCH} ${STAGING} : printf '%s\n200\n' '{\"version\":\"9.5.4\"}'"
 
   run "$PWD"/hooks/command
 
@@ -330,9 +335,9 @@ setup() {
   # reported as a connection error, which would send anyone debugging it
   # looking at the network instead of at the artifact.
   stub curl \
-    "-sSL -w * ${STAGING} : printf '%s\n200\n' '{invalid}'" \
-    "-sSL -w * ${SNAPSHOT} : printf '%s\n200\n' '{\"version\":\"9.5.4-SNAPSHOT\"}'" \
-    "-sSL -w * ${STAGING} : printf '%s\n200\n' '{\"version\":\"9.5.4\"}'"
+    "${CURL_MATCH} ${STAGING} : printf '%s\n200\n' '{invalid}'" \
+    "${CURL_MATCH} ${SNAPSHOT} : printf '%s\n200\n' '{\"version\":\"9.5.4-SNAPSHOT\"}'" \
+    "${CURL_MATCH} ${STAGING} : printf '%s\n200\n' '{\"version\":\"9.5.4\"}'"
 
   run "$PWD"/hooks/command
 
