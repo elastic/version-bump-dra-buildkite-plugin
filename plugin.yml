@@ -21,6 +21,10 @@ configuration:
       minimum: 1
       description: The polling interval in seconds for the curl. Must be a positive whole number.
       default: 60
+    dry_run:
+      type: boolean
+      default: false
+      description: Print the checks that would be polled and exit 0 without making any requests. Verifies nothing — intended for confirming the derived URLs when wiring the plugin into a pipeline.
   required:
     - product
     - version
