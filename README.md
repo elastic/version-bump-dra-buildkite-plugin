@@ -16,6 +16,7 @@ The DRA URL conventions, the manifest field, and the version arithmetic are all 
 - For a minor bump, additionally waits for `main` to move on to the next development minor
 - Reports each check separately, so a slow artifact is easy to spot, and distinguishes an unreachable endpoint from one serving a non-JSON body
 - Stops polling a check once it matches, so only the outstanding artifacts are re-fetched
+- Fails immediately when every manifest 404s, rather than polling a misconfigured `product` until the job times out
 - Idempotent: if the manifests already report the expected version, the first poll succeeds and the step exits immediately
 
 ## Example
@@ -83,6 +84,8 @@ Only `minor` bumps move `main`, which is why it is the only workflow with a thir
 | `polling_interval` | `60`    | Seconds to wait between polls. Must be a positive whole number. |
 
 The plugin polls until every check passes. It has no timeout of its own — the step is bounded by the Buildkite job timeout.
+
+There is one case it will not wait for. An artifact that has not published yet still returns HTTP 200, because `<branch>.json` is a rolling alias that reports the previous version until the new one lands — that is the normal case the polling loop exists for. Every manifest returning 404 instead means the path does not exist at all, which waiting cannot fix and which almost always means `product` is wrong. The step fails on the first poll in that case.
 
 ## Use Cases
 

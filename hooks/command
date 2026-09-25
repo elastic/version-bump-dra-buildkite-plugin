@@ -160,8 +160,12 @@ for i in "${!CHECK_URLS[@]}"; do
   CHECK_MATCHED[i]=false
 done
 
+first_poll=true
+
 while true; do
   all_pass=true
+  all_404=true
+
   for i in "${!CHECK_URLS[@]}"; do
     "${CHECK_MATCHED[$i]}" && continue
 
@@ -173,6 +177,8 @@ while true; do
     else
       all_pass=false
     fi
+
+    [[ "$value" == "HTTP_404" ]] || all_404=false
   done
 
   if $all_pass; then
@@ -180,6 +186,20 @@ while true; do
     echo "✓ All ${#CHECK_URLS[@]} checks passed"
     exit 0
   fi
+
+  # An artifact that has not published yet is not a 404: '<branch>.json' is a
+  # rolling alias, so it resolves with the previous version and the loop waits
+  # for it to move. Every manifest 404ing at once means the path itself does
+  # not exist, which no amount of waiting fixes — almost always a wrong
+  # 'product'. Only meaningful on the first poll, where that shows up.
+  if $first_poll && $all_404; then
+    echo ""
+    echo "Error: every manifest returned HTTP 404 on the first poll."
+    echo "       This usually means 'product' is wrong. It must match the DRA"
+    echo "       artifact path, which is not always the repository name (got '${PRODUCT}')."
+    exit 1
+  fi
+  first_poll=false
 
   echo ""
   sleep "$POLLING_INTERVAL"

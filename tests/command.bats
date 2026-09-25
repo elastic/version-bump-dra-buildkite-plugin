@@ -302,6 +302,54 @@ setup() {
 
   assert_success
   assert_output --partial "❌ staging (9.5): HTTP status 404"
+  refute_output --partial "every manifest returned HTTP 404"
+
+  unstub curl
+}
+
+@test "Every manifest returning 404 on the first poll fails fast" {
+  export BUILDKITE_PLUGIN_VERSION_BUMP_DRA_PRODUCT="beats"
+  export BUILDKITE_PLUGIN_VERSION_BUMP_DRA_VERSION="9.5.4"
+  export BUILDKITE_PLUGIN_VERSION_BUMP_DRA_WORKFLOW="patch"
+  export BUILDKITE_PLUGIN_VERSION_BUMP_DRA_POLLING_INTERVAL="1"
+
+  # Only one round is stubbed. unstub fails on a queued response that goes
+  # unused, and the stub itself fails on an unexpected call, so this is what
+  # proves the loop exits rather than sleeping and polling again.
+  stub curl \
+    "${CURL_MATCH} ${STAGING} : printf '%s\n404\n' 'Not Found'" \
+    "${CURL_MATCH} ${SNAPSHOT} : printf '%s\n404\n' 'Not Found'"
+
+  run "$PWD"/hooks/command
+
+  assert_failure
+  assert_output --partial "every manifest returned HTTP 404 on the first poll"
+  assert_output --partial "got 'beats'"
+
+  unstub curl
+}
+
+@test "Workflow minor keeps polling when only the new release branch 404s" {
+  export BUILDKITE_PLUGIN_VERSION_BUMP_DRA_PRODUCT="beats"
+  export BUILDKITE_PLUGIN_VERSION_BUMP_DRA_VERSION="9.5.0"
+  export BUILDKITE_PLUGIN_VERSION_BUMP_DRA_WORKFLOW="minor"
+  export BUILDKITE_PLUGIN_VERSION_BUMP_DRA_POLLING_INTERVAL="1"
+
+  # The legitimate case a blanket 404 rule would break: a freshly cut release
+  # branch has published nothing yet, so both branch manifests 404 while main
+  # is already live. Not every check 404s, so this must keep polling.
+  stub curl \
+    "${CURL_MATCH} ${STAGING} : printf '%s\n404\n' 'Not Found'" \
+    "${CURL_MATCH} ${SNAPSHOT} : printf '%s\n404\n' 'Not Found'" \
+    "${CURL_MATCH} ${MASTER} : printf '%s\n200\n' '{\"version\":\"9.6.0-SNAPSHOT\"}'" \
+    "${CURL_MATCH} ${STAGING} : printf '%s\n200\n' '{\"version\":\"9.5.0\"}'" \
+    "${CURL_MATCH} ${SNAPSHOT} : printf '%s\n200\n' '{\"version\":\"9.5.0-SNAPSHOT\"}'"
+
+  run "$PWD"/hooks/command
+
+  assert_success
+  refute_output --partial "every manifest returned HTTP 404"
+  assert_output --partial "✓ All 3 checks passed"
 
   unstub curl
 }
