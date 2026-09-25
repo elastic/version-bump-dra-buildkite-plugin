@@ -9,6 +9,10 @@ VERSION="${BUILDKITE_PLUGIN_VERSION_BUMP_DRA_VERSION:-}"
 WORKFLOW="${BUILDKITE_PLUGIN_VERSION_BUMP_DRA_WORKFLOW:-}"
 # default to 60s from plugin.yml
 POLLING_INTERVAL="${BUILDKITE_PLUGIN_VERSION_BUMP_DRA_POLLING_INTERVAL:-60}"
+# Read from the plugin's own namespace, never a bare DRY_RUN. A bare one is
+# set ambiently by unrelated tooling, and inheriting it would turn this gate
+# green without verifying anything.
+DRY_RUN="${BUILDKITE_PLUGIN_VERSION_BUMP_DRA_DRY_RUN:-false}"
 
 # Validate
 if [[ -z "$PRODUCT" ]]; then
@@ -44,6 +48,13 @@ done
 # error after the first full round of checks.
 if ! [[ "$POLLING_INTERVAL" =~ ^[0-9]+$ ]] || [[ "$POLLING_INTERVAL" -lt 1 ]]; then
   echo "Error: 'polling_interval' must be a positive whole number of seconds, got '${POLLING_INTERVAL}'"
+  exit 1
+fi
+
+# Rejected rather than treated as false: a typo here would silently arm a
+# check the pipeline author believes is disabled, or vice versa.
+if [[ "$DRY_RUN" != "true" && "$DRY_RUN" != "false" ]]; then
+  echo "Error: 'dry_run' must be true or false, got '${DRY_RUN}'"
   exit 1
 fi
 
@@ -103,6 +114,15 @@ for i in "${!CHECK_URLS[@]}"; do
   echo "Check: ${CHECK_LABELS[$i]} -> ${CHECK_URLS[$i]} == ${CHECK_EXPECTED[$i]}"
 done
 echo ""
+
+# Placed after validation so a dry run still rejects a bad product/version/
+# workflow combination, and after the Check lines so the derived URLs are in
+# the log — that is the point of the mode.
+if [[ "$DRY_RUN" == "true" ]]; then
+  echo "⚠ DRY RUN: no requests were made and no artifacts were verified."
+  echo "⚠ The checks above are what a real run would poll."
+  exit 0
+fi
 
 # Fetch and extract field value
 fetch_field_value() {

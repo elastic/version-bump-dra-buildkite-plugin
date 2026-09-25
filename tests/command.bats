@@ -211,6 +211,59 @@ setup() {
   done
 }
 
+@test "Dry run prints the checks and exits without making any requests" {
+  export BUILDKITE_PLUGIN_VERSION_BUMP_DRA_PRODUCT="beats"
+  export BUILDKITE_PLUGIN_VERSION_BUMP_DRA_VERSION="9.5.4"
+  export BUILDKITE_PLUGIN_VERSION_BUMP_DRA_WORKFLOW="patch"
+  export BUILDKITE_PLUGIN_VERSION_BUMP_DRA_DRY_RUN="true"
+
+  # Stubbed with no responses queued, so any call to curl fails the test.
+  # That is what proves the mode makes no requests rather than merely
+  # reporting that it did not.
+  stub curl
+
+  run "$PWD"/hooks/command
+
+  assert_success
+  assert_output --partial "Check: staging (9.5)"
+  assert_output --partial "Check: snapshot (9.5)"
+  assert_output --partial "DRY RUN: no requests were made"
+
+  unstub curl
+}
+
+@test "Dry run still rejects a workflow and version that disagree" {
+  export BUILDKITE_PLUGIN_VERSION_BUMP_DRA_PRODUCT="beats"
+  export BUILDKITE_PLUGIN_VERSION_BUMP_DRA_VERSION="9.5.0"
+  export BUILDKITE_PLUGIN_VERSION_BUMP_DRA_WORKFLOW="patch"
+  export BUILDKITE_PLUGIN_VERSION_BUMP_DRA_DRY_RUN="true"
+
+  # Validation runs before the dry-run exit, so wiring the plugin up with a
+  # bad config is caught while the check is still disabled.
+  run "$PWD"/hooks/command
+
+  assert_failure
+  assert_output --partial "'workflow' is 'patch' but 'version' is a X.Y.0 release"
+  refute_output --partial "DRY RUN"
+}
+
+@test "Invalid dry_run fails rather than defaulting to false" {
+  export BUILDKITE_PLUGIN_VERSION_BUMP_DRA_PRODUCT="beats"
+  export BUILDKITE_PLUGIN_VERSION_BUMP_DRA_VERSION="9.5.4"
+  export BUILDKITE_PLUGIN_VERSION_BUMP_DRA_WORKFLOW="patch"
+
+  # 'yes' and 'True' are the plausible typos. Silently treating them as false
+  # would arm a check the pipeline author believes is disabled.
+  for invalid in yes True 1; do
+    export BUILDKITE_PLUGIN_VERSION_BUMP_DRA_DRY_RUN="$invalid"
+
+    run "$PWD"/hooks/command
+
+    assert_failure
+    assert_output --partial "'dry_run' must be true or false, got '${invalid}'"
+  done
+}
+
 @test "Default polling interval of 60s is used when omitted" {
   export BUILDKITE_PLUGIN_VERSION_BUMP_DRA_PRODUCT="beats"
   export BUILDKITE_PLUGIN_VERSION_BUMP_DRA_VERSION="9.5.4"

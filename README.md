@@ -82,8 +82,45 @@ Only `minor` bumps move `main`, which is why it is the only workflow with a thir
 | input              | default | description                    |
 | ------------------ | ------- | ------------------------------ |
 | `polling_interval` | `60`    | Seconds to wait between polls. Must be a positive whole number. |
+| `dry_run`          | `false` | Print the checks that would be polled, then exit 0 without making any requests. |
 
 The plugin polls until every check passes. It has no timeout of its own — the step is bounded by the Buildkite job timeout.
+
+### Dry run
+
+`dry_run: true` resolves and prints the checks, then exits 0 without making a request. It is for confirming the plugin derives the URLs you expect when wiring it into a pipeline, without waiting on a real artifact:
+
+```yaml
+steps:
+  - label: "Wait for DRA artifacts"
+    plugins:
+      - elastic/version-bump-dra#v1.0.0:
+          product: "beats"
+          version: "9.5.4"
+          workflow: "patch"
+          dry_run: true
+```
+
+which prints:
+
+```bash
+Check: staging (9.5) -> https://artifacts-staging.elastic.co/beats/latest/9.5.json == 9.5.4
+Check: snapshot (9.5) -> https://artifacts-snapshot.elastic.co/beats/latest/9.5.json == 9.5.4-SNAPSHOT
+
+⚠ DRY RUN: no requests were made and no artifacts were verified.
+⚠ The checks above are what a real run would poll.
+```
+
+Validation still runs first, so a `product`, `version` or `workflow` mistake is reported even in a dry run.
+
+**A dry run verifies nothing and the step still passes.** Left enabled by accident it disables the gate while reporting success, so it belongs in a pipeline only while the step is being set up. To skip the check as part of a wider dry run of the pipeline, prefer an `if:` on the step — Buildkite then reports it as skipped rather than passed:
+
+```yaml
+  - label: "Wait for DRA artifacts"
+    if: build.env("DRY_RUN") != "true"
+```
+
+### Failing fast
 
 There is one case it will not wait for. An artifact that has not published yet still returns HTTP 200, because `<branch>.json` is a rolling alias that reports the previous version until the new one lands — that is the normal case the polling loop exists for. Every manifest returning 404 instead means the path does not exist at all, which waiting cannot fix and which almost always means `product` is wrong. The step fails on the first poll in that case.
 
