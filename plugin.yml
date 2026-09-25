@@ -11,7 +11,7 @@ configuration:
       description: DRA product name as it appears in the artifact path (e.g. "beats", "apm-server"). Not always identical to the repo name.
     version:
       type: string
-      description: Full MAJOR.MINOR.PATCH version being bumped to (e.g. "9.5.0"). The release branch is always derived from this by dropping the patch component.
+      description: Target MAJOR.MINOR.PATCH version after the bump, i.e. the NEW_VERSION passed by the centralized version-bump pipeline (e.g. "9.5.3"). The release branch is always derived from this by dropping the patch component.
     workflow:
       type: string
       enum: [patch, minor]
