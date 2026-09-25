@@ -319,3 +319,26 @@ setup() {
 
   unstub curl
 }
+
+@test "A 200 carrying a non-JSON body is reported as invalid JSON" {
+  export BUILDKITE_PLUGIN_VERSION_BUMP_DRA_PRODUCT="beats"
+  export BUILDKITE_PLUGIN_VERSION_BUMP_DRA_VERSION="9.5.4"
+  export BUILDKITE_PLUGIN_VERSION_BUMP_DRA_WORKFLOW="patch"
+  export BUILDKITE_PLUGIN_VERSION_BUMP_DRA_POLLING_INTERVAL="1"
+
+  # A truncated manifest or an error page served with a 200. This must not be
+  # reported as a connection error, which would send anyone debugging it
+  # looking at the network instead of at the artifact.
+  stub curl \
+    "-sSL -w * ${STAGING} : printf '%s\n200\n' '{invalid}'" \
+    "-sSL -w * ${SNAPSHOT} : printf '%s\n200\n' '{\"version\":\"9.5.4-SNAPSHOT\"}'" \
+    "-sSL -w * ${STAGING} : printf '%s\n200\n' '{\"version\":\"9.5.4\"}'"
+
+  run "$PWD"/hooks/command
+
+  assert_success
+  assert_output --partial "❌ staging (9.5): Response is not valid JSON"
+  refute_output --partial "Connection error"
+
+  unstub curl
+}

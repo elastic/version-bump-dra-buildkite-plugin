@@ -14,7 +14,7 @@ The DRA URL conventions, the manifest field, and the version arithmetic are all 
 - Derives the release branch from the version, so it never has to be passed separately
 - Polls the staging and snapshot manifests for that branch
 - For a minor bump, additionally waits for `main` to move on to the next development minor
-- Reports each check separately, so a slow artifact is easy to spot
+- Reports each check separately, so a slow artifact is easy to spot, and distinguishes an unreachable endpoint from one serving a non-JSON body
 - Stops polling a check once it matches, so only the outstanding artifacts are re-fetched
 - Idempotent: if the manifests already report the expected version, the first poll succeeds and the step exits immediately
 

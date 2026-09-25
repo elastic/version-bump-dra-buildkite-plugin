@@ -118,7 +118,10 @@ fetch_field_value() {
   body=$(echo "$response" | sed '$d')
 
   if [[ "$http_code" -eq 200 ]]; then
-    value=$(echo "$body" | jq -r ".version" 2>/dev/null || echo "ERROR")
+    # A 200 carrying something that is not JSON — an HTML error page, a
+    # truncated manifest — is a distinct failure from an unreachable endpoint,
+    # so it gets its own sentinel rather than being folded into ERROR.
+    value=$(echo "$body" | jq -r ".version" 2>/dev/null) || { echo "PARSE_ERROR"; return; }
     echo "$value"
   else
     echo "HTTP_${http_code}"
@@ -133,6 +136,8 @@ show_status() {
 
   if [[ "$value" == "ERROR" ]]; then
     echo "  ❌ ${label}: Connection error"
+  elif [[ "$value" == "PARSE_ERROR" ]]; then
+    echo "  ❌ ${label}: Response is not valid JSON"
   elif [[ "$value" =~ ^HTTP_ ]]; then
     local code="${value##HTTP_}"
     echo "  ❌ ${label}: HTTP status ${code}"
