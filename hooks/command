@@ -66,7 +66,15 @@ add_check "staging (${BRANCH})" "${STAGING_BASE}/${BRANCH}.json" "${VERSION}"
 add_check "snapshot (${BRANCH})" "${SNAPSHOT_BASE}/${BRANCH}.json" "${VERSION}-SNAPSHOT"
 
 case "$WORKFLOW" in
-  patch) ;;
+  patch)
+    # A patch release never targets X.Y.0 — that is a minor. Accepting it here
+    # would run only the two release-branch checks and silently skip the
+    # main-branch check a minor requires.
+    if [[ "$patch" -eq 0 ]]; then
+      echo "Error: 'workflow' is 'patch' but 'version' is a X.Y.0 release, got '${VERSION}'"
+      exit 1
+    fi
+    ;;
   minor)
     # A minor release always targets X.Y.0. A patch version here means the
     # pipeline passed a 'version' that disagrees with its 'workflow', which
