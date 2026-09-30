@@ -138,7 +138,7 @@ Two conditions must both hold before it does, because a lone 404 is legitimate:
 - **Every** manifest 404s, not just one. A freshly cut release branch has published nothing yet, so its manifests 404 while `master.json` is already live.
 - **No** manifest has resolved yet. A wrong `product` breaks every path at once, so a single successful check proves the product is valid — after that, a 404 on the rest can only be an artifact that has not been built yet.
 
-While neither has been established the plugin keeps polling, so an inconclusive round — a connection error, defers the decision to the next one rather than suppressing it.
+While neither has been established the plugin keeps polling, so an inconclusive round (a connection error, for example) defers the decision to the next one rather than suppressing it.
 
 ## Use Cases
 
