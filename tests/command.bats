@@ -443,9 +443,10 @@ setup() {
   stub curl \
     "${CURL_MATCH} ${STAGING} : printf '%s\n404\n' 'Not Found'" \
     "${CURL_MATCH} ${SNAPSHOT} : printf '%s\n404\n' 'Not Found'" \
-    "${CURL_MATCH} ${MASTER} : printf '%s\n200\n' '{\"version\":\"9.6.0-SNAPSHOT\"}'" \
+    "${CURL_MATCH} ${MASTER} : printf '%s\n200\n' '{\"version\":\"9.5.0-SNAPSHOT\"}'" \
     "${CURL_MATCH} ${STAGING} : printf '%s\n200\n' '{\"version\":\"9.5.0\"}'" \
-    "${CURL_MATCH} ${SNAPSHOT} : printf '%s\n200\n' '{\"version\":\"9.5.0-SNAPSHOT\"}'"
+    "${CURL_MATCH} ${SNAPSHOT} : printf '%s\n200\n' '{\"version\":\"9.5.0-SNAPSHOT\"}'" \
+    "${CURL_MATCH} ${MASTER} : printf '%s\n200\n' '{\"version\":\"9.6.0-SNAPSHOT\"}'"
 
   run "$PWD"/hooks/command
 
