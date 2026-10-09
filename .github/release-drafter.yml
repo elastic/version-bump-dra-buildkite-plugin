@@ -1,0 +1,37 @@
+template: |
+  $CHANGES
+
+  **Full Changelog**: https://github.com/$OWNER/$REPOSITORY/compare/$PREVIOUS_TAG...v$RESOLVED_VERSION
+name-template: 'version-bump-dra-buildkite-plugin v$RESOLVED_VERSION'
+tag-template: 'v$RESOLVED_VERSION'
+change-template: '- $TITLE by @$AUTHOR in #$NUMBER'
+category-template: '### $TITLE'
+categories:
+  - title: '💥 Breaking Changes'
+    labels:
+      - 'changelog:breaking'
+  - title: '✨ Features'
+    labels:
+      - 'changelog:feature'
+      - 'changelog:enhancement'
+  - title: '🐛 Bug Fixes'
+    labels:
+      - 'changelog:fix'
+  - title: '📝 Documentation'
+    labels:
+      - 'changelog:docs'
+  - title: '🧰 Maintenance'
+    labels:
+      - 'changelog:chore'
+      - 'changelog:ci'
+      - 'changelog:dependencies'
+exclude-labels:
+  - 'changelog:skip'
+version-resolver:
+  major:
+    labels:
+      - 'changelog:breaking'
+  minor:
+    labels:
+      - 'changelog:feature'
+  default: patch
