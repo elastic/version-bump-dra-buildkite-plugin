@@ -10,7 +10,7 @@ steps:
       image: family/core-ubuntu-2204
   - label: ":test_tube: Test plugin"
     plugins:
-      - plugin-tester#v1.3.0:
+      - plugin-tester#v1.4.0:
           folders:
             - tests
           version: v4.3.0
