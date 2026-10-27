@@ -1,0 +1,59 @@
+name: bump-readme-version
+
+on:
+  release:
+    types:
+      - published
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  bump:
+    runs-on: ubuntu-slim
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+      - name: Update plugin version in README
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          set -euo pipefail
+
+          if [[ ! "${RELEASE_TAG}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Expected a semantic version tag like v1.2.3, got '${RELEASE_TAG}'"
+            exit 1
+          fi
+
+          sed -i -E "s|(elastic/version-bump-dra#)v[0-9]+\.[0-9]+\.[0-9]+|\1${RELEASE_TAG}|g" README.md
+      - name: Create pull request
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          set -euo pipefail
+          BRANCH="update-plugin-version-${RELEASE_TAG}"
+
+          if git diff --quiet README.md; then
+            echo "No README version references need updating"
+            exit 0
+          fi
+
+          if gh pr view "${BRANCH}" --json number >/dev/null 2>&1; then
+            echo "A version update pull request already exists for ${RELEASE_TAG}"
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -b "${BRANCH}"
+          git add README.md
+          git commit -m "docs: bump plugin version to ${RELEASE_TAG} in README"
+          git push origin "${BRANCH}"
+          gh pr create \
+            --title "docs: bump plugin version to ${RELEASE_TAG} in README" \
+            --body "Automated version bump after release ${RELEASE_TAG}." \
+            --base main \
+            --head "${BRANCH}"
