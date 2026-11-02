@@ -171,6 +171,10 @@ steps:
           polling_interval: 120
 ```
 
+## Releases
+
+GitHub releases are drafted with semantic versions based on pull request labels. See the [release process](docs/RELEASE.md) for the labels and publishing steps.
+
 ## Development
 
 This repository is using `pre-commit` to automate commit hooks.
